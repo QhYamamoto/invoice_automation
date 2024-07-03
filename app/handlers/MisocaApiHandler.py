@@ -1,10 +1,13 @@
-from typing import Any
-from selenium.webdriver.support import expected_conditions as EC
+import calendar
+import random
 import requests
 import os
 import urllib.parse
 from urllib.parse import urlparse, parse_qs
+from urllib3.connection import datetime
 from libs.VirtualBrowser import VirtualBrowser
+from selenium.webdriver.support import expected_conditions as EC
+from typing import Any
 
 
 class MisocaApiHandler:
@@ -113,3 +116,66 @@ class MisocaApiHandler:
             headers=self.__get_authorization_header(),
         )
         return response.json()
+
+    def publish_invoice(self):
+        dt_now = datetime.datetime.now()
+        dt_last_month = dt_now.replace(month=dt_now.month - 1)
+        dt_last_date_of_current_month = dt_now.replace(
+            day=calendar.monthrange(dt_now.year, dt_now.month)[1]
+        )
+
+        subject = os.environ['INVOICE_SUBJECT']
+        recipient_name = os.environ['INVOICE_RECIPIENT_NAME']
+        recipient_title = os.environ['INVOICE_RECIPIENT_TITLE']
+        contact_id = os.environ['INVOICE_CONTACT_ID']
+        sender_name = os.environ['INVOICE_SENDER_NAME']
+        sender_tel = os.environ['INVOICE_SENDER_TEL']
+        sender_email = os.environ['INVOICE_SENDER_EMAIL']
+        notes = os.environ['INVOICE_NOTES']
+        bank_account = os.environ['INVOICE_BANK_ACCOUNT']
+        item_name = os.environ['INVOICE_ITEM_NAME']
+        hourly_wage = os.environ['INVOICE_HOURLY_WAGE']
+        total_working_hours = os.environ['INVOICE_TOTAL_WORKING_HOURS']
+
+        data = {
+            'invoice_number': dt_last_month.strftime(f"%Y%m%d-001"),
+            'issue_date': dt_last_date_of_current_month.strftime('%Y-%m-%d'),
+            'subject': dt_last_month.strftime(subject),
+            'recipient_name': recipient_name,
+            'recipient_title': recipient_title,
+            'contact_id': int(contact_id),
+            'body': {
+                'sender_name1': sender_name,
+                'sender_tel': sender_tel,
+                'sender_email': sender_email,
+                'tax_option': 'INCLUDE',
+                'tax_rounding_policy': 'FLOOR',
+                'notes': notes,
+                'bank_accounts': [
+                    {
+                        'detail': bank_account,
+                    }
+                ],
+            },
+            'items': [
+                {
+                    'name': item_name,
+                    'quantity': 1.0,
+                    'unit_price': float(hourly_wage) * float(total_working_hours),
+                    'tax_type': 'STANDARD_TAX_10',
+                    'excluding_withholding_tax': False,
+                },
+            ],
+        }
+
+        try:
+            response = requests.post(
+                self.__generate_url('/api/v3/invoice'),
+                headers=self.__get_authorization_header(),
+                json=data,
+            )
+
+            response.raise_for_status()
+        except Exception:
+            # TODO: ERRORログ出力
+            print('請求書の発行に失敗しました。')
