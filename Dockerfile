@@ -15,4 +15,6 @@ COPY app/ ./
 
 RUN pip3 install -r /app/requirements.txt
 
+RUN mkdir -p /app/logs
+
 CMD ["python3", "/app/main.py"]

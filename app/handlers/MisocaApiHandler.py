@@ -5,9 +5,12 @@ import os
 import urllib.parse
 from urllib.parse import urlparse, parse_qs
 from urllib3.connection import datetime
+from libs.Logger import Logger
 from libs.VirtualBrowser import VirtualBrowser
 from selenium.webdriver.support import expected_conditions as EC
 from typing import Any
+
+logger = Logger()
 
 
 class MisocaApiHandler:
@@ -44,41 +47,51 @@ class MisocaApiHandler:
         Returns:
             str: アクセストークン
         """
+
         virtual_browser = VirtualBrowser()
         driver = virtual_browser.get_driver()
 
+        logger.info("Trying to loggin to Misoca...")
+
         # 仮想ブラウザで認証画面を開く
-        auth_request_url = self.__generate_url('/oauth2/authorize', {
-            'response_type': 'code',
-            'client_id': self.__client_id,
-            'redirect_uri': self.__redirect_uri,
-            'scope': 'write'
-        })
-        driver.get(auth_request_url)
+        try:
+            auth_request_url = self.__generate_url('/oauth2/authorize', {
+                'response_type': 'code',
+                'client_id': self.__client_id,
+                'redirect_uri': self.__redirect_uri,
+                'scope': 'write'
+            })
+            driver.get(auth_request_url)
 
-        # 次の画面へのaタグを取得
-        a_tag = virtual_browser.get_element(
-            '.c-btn--l.c-btn--yayoi.c-btn--block.u-margin-bottom--small'
-        )
-        a_tag.click()
+            # 次の画面へのaタグを取得
+            a_tag = virtual_browser.get_element(
+                '.c-btn--l.c-btn--yayoi.c-btn--block.u-margin-bottom--small'
+            )
+            a_tag.click()
 
-        # ID(メールアドレス)入力画面
-        yayoi_id_field = virtual_browser.get_element('#yayoi_id_input')
-        yayoi_id_field.send_keys(self.__email)
-        next_button = virtual_browser.get_element('#next_btn')
-        next_button.click()
+            # ID(メールアドレス)入力画面
+            yayoi_id_field = virtual_browser.get_element('#yayoi_id_input')
+            yayoi_id_field.send_keys(self.__email)
+            next_button = virtual_browser.get_element('#next_btn')
+            next_button.click()
 
-        # パスワード入力画面
-        password_field = virtual_browser.get_element('#password_input')
-        password_field.send_keys(self.__password)
-        login_button = virtual_browser.get_element('#login_btn')
-        login_button.click()
+            # パスワード入力画面
+            password_field = virtual_browser.get_element('#password_input')
+            password_field.send_keys(self.__password)
+            login_button = virtual_browser.get_element('#login_btn')
+            login_button.click()
 
-        # リダイレクトされたURLから認証コードを抽出
-        virtual_browser.wait_until(EC.url_contains("code="))
-        current_url = driver.current_url
-        driver.quit()
+            # リダイレクトされたURLから認証コードを抽出
+            virtual_browser.wait_until(EC.url_contains("code="))
+            current_url = driver.current_url
+            driver.quit()
+        except Exception as e:
+            logger.error(f"Failed to loggin: {str(e)}")
+            exit()
 
+        logger.info("Succeeded to loggin.")
+
+        logger.info("Trying to get Access token for Misoca...")
         # 認証コードを用いてトークンを取得する
         auth_code = parse_qs(urlparse(current_url).query)['code'][0]
         token_data = {
@@ -88,10 +101,19 @@ class MisocaApiHandler:
             'client_id': self.__client_id,
             'client_secret': self.__client_secret
         }
-        token_response = requests.post(
-            self.__generate_url('/oauth2/token'),
-            data=token_data,
-        )
+
+        try:
+            token_response = requests.post(
+                self.__generate_url('/oauth2/token'),
+                data=token_data,
+            )
+
+            token_response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed to get Access token: {str(e)}")
+            exit()
+
+        logger.info("Succeeded to get Access token.")
 
         parsed_response = token_response.json()
         return parsed_response['access_token']
@@ -101,7 +123,8 @@ class MisocaApiHandler:
 
     def __check_access_token(self) -> None:
         if not self.__access_token:
-            raise Exception('Access token is not set.')
+            logger.error("Access token is not set.")
+            exit()
 
     def get_all_invoices(self) -> list[dict[str, Any]]:
         """請求書を全件取得する
@@ -111,13 +134,23 @@ class MisocaApiHandler:
         """
         self.__check_access_token()
 
-        response = requests.get(
-            self.__generate_url('/api/v3/invoices'),
-            headers=self.__get_authorization_header(),
-        )
+        try:
+            response = requests.get(
+                self.__generate_url('/api/v3/invoices'),
+                headers=self.__get_authorization_header(),
+            )
+
+            response.raise_for_status()
+            logger.info(f"Succeeded to get invoices.")
+        except Exception as e:
+            logger.error(f"Failed to get invoices: {str(e)}")
+            exit()
+
         return response.json()
 
     def publish_invoice(self):
+        self.__check_access_token()
+
         dt_now = datetime.datetime.now()
         dt_last_month = dt_now.replace(month=dt_now.month - 1)
         dt_last_date_of_current_month = dt_now.replace(
@@ -176,6 +209,7 @@ class MisocaApiHandler:
             )
 
             response.raise_for_status()
-        except Exception:
-            # TODO: ERRORログ出力
-            print('請求書の発行に失敗しました。')
+            logger.info(f"Succeeded to publish invoice.")
+        except Exception as e:
+            logger.error(f"Failed to publish invoice: {str(e)}")
+            exit()
