@@ -15,12 +15,12 @@ logger = Logger()
 
 class MisocaApiHandler:
     def __init__(self) -> None:
-        self.__client_id = os.environ['MISOCA_CLIENT_ID']
-        self.__client_secret = os.environ['MISOCA_CLIENT_SECRET']
-        self.__redirect_uri = os.environ['MISOCA_REDIRECT_URI']
-        self.__base_url = os.environ['MISOCA_BASE_URL']
-        self.__email = os.environ['MISOCA_EMAIL']
-        self.__password = os.environ['MISOCA_PASSWORD']
+        self.__client_id = os.environ["MISOCA_CLIENT_ID"]
+        self.__client_secret = os.environ["MISOCA_CLIENT_SECRET"]
+        self.__redirect_uri = os.environ["MISOCA_REDIRECT_URI"]
+        self.__base_url = os.environ["MISOCA_BASE_URL"]
+        self.__email = os.environ["MISOCA_EMAIL"]
+        self.__password = os.environ["MISOCA_PASSWORD"]
         self.__access_token = self.__get_access_token()
 
     def __generate_url(self, path: str, query_params: dict[str, str] | None = None):
@@ -33,7 +33,7 @@ class MisocaApiHandler:
         Returns:
             str: 生成されたURL
         """
-        path = path.strip('/')
+        path = path.strip("/")
         url = f"{self.__base_url}/{path}"
 
         return (
@@ -55,30 +55,30 @@ class MisocaApiHandler:
 
         # 仮想ブラウザで認証画面を開く
         try:
-            auth_request_url = self.__generate_url('/oauth2/authorize', {
-                'response_type': 'code',
-                'client_id': self.__client_id,
-                'redirect_uri': self.__redirect_uri,
-                'scope': 'write'
+            auth_request_url = self.__generate_url("/oauth2/authorize", {
+                "response_type": "code",
+                "client_id": self.__client_id,
+                "redirect_uri": self.__redirect_uri,
+                "scope": "write"
             })
             driver.get(auth_request_url)
 
             # 次の画面へのaタグを取得
             a_tag = virtual_browser.get_element(
-                '.c-btn--l.c-btn--yayoi.c-btn--block.u-margin-bottom--small'
+                ".c-btn--l.c-btn--yayoi.c-btn--block.u-margin-bottom--small"
             )
             a_tag.click()
 
             # ID(メールアドレス)入力画面
-            yayoi_id_field = virtual_browser.get_element('#yayoi_id_input')
+            yayoi_id_field = virtual_browser.get_element("#yayoi_id_input")
             yayoi_id_field.send_keys(self.__email)
-            next_button = virtual_browser.get_element('#next_btn')
+            next_button = virtual_browser.get_element("#next_btn")
             next_button.click()
 
             # パスワード入力画面
-            password_field = virtual_browser.get_element('#password_input')
+            password_field = virtual_browser.get_element("#password_input")
             password_field.send_keys(self.__password)
-            login_button = virtual_browser.get_element('#login_btn')
+            login_button = virtual_browser.get_element("#login_btn")
             login_button.click()
 
             # リダイレクトされたURLから認証コードを抽出
@@ -93,18 +93,18 @@ class MisocaApiHandler:
 
         logger.info("Trying to get Access token for Misoca...")
         # 認証コードを用いてトークンを取得する
-        auth_code = parse_qs(urlparse(current_url).query)['code'][0]
+        auth_code = parse_qs(urlparse(current_url).query)["code"][0]
         token_data = {
-            'grant_type': 'authorization_code',
-            'code': auth_code,
-            'redirect_uri': self.__redirect_uri,
-            'client_id': self.__client_id,
-            'client_secret': self.__client_secret
+            "grant_type": "authorization_code",
+            "code": auth_code,
+            "redirect_uri": self.__redirect_uri,
+            "client_id": self.__client_id,
+            "client_secret": self.__client_secret
         }
 
         try:
             token_response = requests.post(
-                self.__generate_url('/oauth2/token'),
+                self.__generate_url("/oauth2/token"),
                 data=token_data,
             )
 
@@ -116,10 +116,10 @@ class MisocaApiHandler:
         logger.info("Succeeded to get Access token.")
 
         parsed_response = token_response.json()
-        return parsed_response['access_token']
+        return parsed_response["access_token"]
 
     def __get_authorization_header(self) -> dict[str, str]:
-        return {'Authorization': f'Bearer {self.__access_token}'}
+        return {"Authorization": f"Bearer {self.__access_token}"}
 
     def __check_access_token(self) -> None:
         if not self.__access_token:
@@ -136,7 +136,7 @@ class MisocaApiHandler:
 
         try:
             response = requests.get(
-                self.__generate_url('/api/v3/invoices'),
+                self.__generate_url("/api/v3/invoices"),
                 headers=self.__get_authorization_header(),
             )
 
@@ -157,53 +157,53 @@ class MisocaApiHandler:
             day=calendar.monthrange(dt_now.year, dt_now.month)[1]
         )
 
-        subject = os.environ['INVOICE_SUBJECT']
-        recipient_name = os.environ['INVOICE_RECIPIENT_NAME']
-        recipient_title = os.environ['INVOICE_RECIPIENT_TITLE']
-        contact_id = os.environ['INVOICE_CONTACT_ID']
-        sender_name = os.environ['INVOICE_SENDER_NAME']
-        sender_tel = os.environ['INVOICE_SENDER_TEL']
-        sender_email = os.environ['INVOICE_SENDER_EMAIL']
-        notes = os.environ['INVOICE_NOTES']
-        bank_account = os.environ['INVOICE_BANK_ACCOUNT']
-        item_name = os.environ['INVOICE_ITEM_NAME']
-        hourly_wage = os.environ['INVOICE_HOURLY_WAGE']
-        total_working_hours = os.environ['INVOICE_TOTAL_WORKING_HOURS']
+        subject = os.environ["INVOICE_SUBJECT"]
+        recipient_name = os.environ["INVOICE_RECIPIENT_NAME"]
+        recipient_title = os.environ["INVOICE_RECIPIENT_TITLE"]
+        contact_id = os.environ["INVOICE_CONTACT_ID"]
+        sender_name = os.environ["INVOICE_SENDER_NAME"]
+        sender_tel = os.environ["INVOICE_SENDER_TEL"]
+        sender_email = os.environ["INVOICE_SENDER_EMAIL"]
+        notes = os.environ["INVOICE_NOTES"]
+        bank_account = os.environ["INVOICE_BANK_ACCOUNT"]
+        item_name = os.environ["INVOICE_ITEM_NAME"]
+        hourly_wage = os.environ["INVOICE_HOURLY_WAGE"]
+        total_working_hours = os.environ["INVOICE_TOTAL_WORKING_HOURS"]
 
         data = {
-            'invoice_number': dt_last_month.strftime(f"%Y%m%d-001"),
-            'issue_date': dt_last_date_of_current_month.strftime('%Y-%m-%d'),
-            'subject': dt_last_month.strftime(subject),
-            'recipient_name': recipient_name,
-            'recipient_title': recipient_title,
-            'contact_id': int(contact_id),
-            'body': {
-                'sender_name1': sender_name,
-                'sender_tel': sender_tel,
-                'sender_email': sender_email,
-                'tax_option': 'INCLUDE',
-                'tax_rounding_policy': 'FLOOR',
-                'notes': notes,
-                'bank_accounts': [
+            "invoice_number": dt_last_month.strftime(f"%Y%m%d-001"),
+            "issue_date": dt_last_date_of_current_month.strftime("%Y-%m-%d"),
+            "subject": dt_last_month.strftime(subject),
+            "recipient_name": recipient_name,
+            "recipient_title": recipient_title,
+            "contact_id": int(contact_id),
+            "body": {
+                "sender_name1": sender_name,
+                "sender_tel": sender_tel,
+                "sender_email": sender_email,
+                "tax_option": "INCLUDE",
+                "tax_rounding_policy": "FLOOR",
+                "notes": notes,
+                "bank_accounts": [
                     {
-                        'detail': bank_account,
+                        "detail": bank_account,
                     }
                 ],
             },
-            'items': [
+            "items": [
                 {
-                    'name': item_name,
-                    'quantity': 1.0,
-                    'unit_price': float(hourly_wage) * float(total_working_hours),
-                    'tax_type': 'STANDARD_TAX_10',
-                    'excluding_withholding_tax': False,
+                    "name": item_name,
+                    "quantity": 1.0,
+                    "unit_price": float(hourly_wage) * float(total_working_hours),
+                    "tax_type": "STANDARD_TAX_10",
+                    "excluding_withholding_tax": False,
                 },
             ],
         }
 
         try:
             response = requests.post(
-                self.__generate_url('/api/v3/invoice'),
+                self.__generate_url("/api/v3/invoice"),
                 headers=self.__get_authorization_header(),
                 json=data,
             )
