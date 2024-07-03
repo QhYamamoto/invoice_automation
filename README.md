@@ -2,14 +2,8 @@
 
 ## 使用方法
 
-1. Docker イメージをビルド
+1. コンテナのビルド、起動、コマンド実行
 
 ```
-docker build -t invoice-automation .
-```
-
-2. コンテナの実行
-
-```
-docker run -it --rm invoice-automation
+docker-compose up --build
 ```
