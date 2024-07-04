@@ -1,5 +1,4 @@
 import calendar
-import random
 import requests
 import os
 import urllib.parse
@@ -11,6 +10,19 @@ from selenium.webdriver.support import expected_conditions as EC
 from typing import Any
 
 logger = Logger()
+
+
+def check_access_token(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            if not getattr(self, '_MisocaApiHandler__access_token', None):
+                raise Exception()
+        except Exception as e:
+            logger.error("Access token is not set.")
+            exit()
+        result = func(self, *args, **kwargs)  # オリジナルのメソッドを呼び出す
+        return result
+    return wrapper
 
 
 class MisocaApiHandler:
@@ -121,18 +133,14 @@ class MisocaApiHandler:
     def __get_authorization_header(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.__access_token}"}
 
-    def __check_access_token(self) -> None:
-        if not self.__access_token:
-            logger.error("Access token is not set.")
-            exit()
-
+    @check_access_token
     def get_all_invoices(self) -> list[dict[str, Any]]:
         """請求書を全件取得する
 
         Returns:
             list[dict[str, Any]]: 請求書のリスト
         """
-        self.__check_access_token()
+        logger.info(f"Trying to get invoices...")
 
         try:
             response = requests.get(
@@ -146,11 +154,11 @@ class MisocaApiHandler:
             logger.error(f"Failed to get invoices: {str(e)}")
             exit()
 
-        return response.json()
+        return sorted(response.json(), key=lambda x: x["created_at"], reverse=True)
 
-    def publish_invoice(self):
-        self.__check_access_token()
-
+    @check_access_token
+    def publish_invoice(self) -> None:
+        """請求書を発行する"""
         dt_now = datetime.datetime.now()
         dt_last_month = dt_now.replace(month=dt_now.month - 1)
         dt_last_date_of_current_month = dt_now.replace(
@@ -201,6 +209,7 @@ class MisocaApiHandler:
             ],
         }
 
+        logger.info(f"Trying to publish invoice...")
         try:
             response = requests.post(
                 self.__generate_url("/api/v3/invoice"),
