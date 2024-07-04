@@ -5,6 +5,5 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./app/logs:/app/logs
       - ./app/storage:/app/storage
     command: ["python3", "/app/main.py"]

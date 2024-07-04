@@ -29,7 +29,7 @@ class Logger():
         logger.setLevel(logging.INFO)
 
         dt_now = datetime.now()
-        log_dir = "/app/logs"
+        log_dir = "/app/storage/logs"
         log_file = dt_now.strftime("%Y.log")
 
         # ディレクトリが存在しない場合は作成
