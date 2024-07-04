@@ -11,6 +11,10 @@ misoca_api = MisocaApiHandler()
 misoca_api.publish_invoice()
 
 invoices = misoca_api.get_all_invoices()
-print(invoices[0])
+latest_invoice = invoices[0]
+
+path_to_invoice_pdf = misoca_api.download_invoice_pdf(latest_invoice["id"])
+
+print(path_to_invoice_pdf)
 
 logger.info("Process completed successfully.")

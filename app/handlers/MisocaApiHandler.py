@@ -222,3 +222,37 @@ class MisocaApiHandler:
         except Exception as e:
             logger.error(f"Failed to publish invoice: {str(e)}")
             exit()
+
+    @check_access_token
+    def download_invoice_pdf(self, id: int) -> str:
+        """請求書のPDFファイルをダウンロードする
+
+        Args:
+            id (int): 請求書ID
+
+        Returns:
+            str: ダウンロードしたPDFファイルへのパス
+        """
+        logger.info(f"Trying to download invoice PDF...")
+        try:
+            response = requests.get(
+                self.__generate_url(f"/api/v3/invoice/{id}/pdf"),
+                headers=self.__get_authorization_header(),
+            )
+
+            response.raise_for_status()
+
+            dt_now = datetime.datetime.now()
+            dt_last_month = dt_now.replace(month=dt_now.month - 1)
+            pdf_filename = os.environ["INVOICE_PDF_FILENAME"]
+            pdf_file_path = f"/app/storage/invoices/{dt_last_month.strftime(pdf_filename)}.pdf"
+
+            with open(pdf_file_path, "wb") as f:
+                f.write(response.content)
+
+            logger.info(f"Succeeded to download invoice PDF.")
+
+            return pdf_file_path
+        except Exception as e:
+            logger.error(f"Failed to download invoice PDF: {str(e)}")
+            exit()
