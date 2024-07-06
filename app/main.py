@@ -1,6 +1,6 @@
 import sys
 from dotenv import load_dotenv
-from Handelr import Handler
+from Handler import Handler
 from libs.Logger import Logger
 
 try:
