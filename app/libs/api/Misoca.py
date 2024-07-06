@@ -12,19 +12,6 @@ from typing import Any
 logger = Logger()
 
 
-def check_access_token(func):
-    def wrapper(self, *args, **kwargs):
-        try:
-            if not getattr(self, '_MisocaApiHandler__access_token', None):
-                raise Exception()
-        except Exception as e:
-            logger.error("Access token is not set.")
-            exit()
-        result = func(self, *args, **kwargs)  # オリジナルのメソッドを呼び出す
-        return result
-    return wrapper
-
-
 class MisocaApi:
     def __init__(self) -> None:
         self.__client_id = os.environ["MISOCA_CLIENT_ID"]
@@ -133,7 +120,6 @@ class MisocaApi:
     def __get_authorization_header(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.__access_token}"}
 
-    @check_access_token
     def get_all_invoices(self) -> list[dict[str, Any]]:
         """請求書を全件取得する
 
@@ -156,7 +142,6 @@ class MisocaApi:
 
         return sorted(response.json(), key=lambda x: x["created_at"], reverse=True)
 
-    @check_access_token
     def publish_invoice(self) -> None:
         """請求書を発行する"""
         dt_now = datetime.datetime.now()
@@ -223,7 +208,6 @@ class MisocaApi:
             logger.error(f"Failed to publish invoice: {str(e)}")
             exit()
 
-    @check_access_token
     def download_invoice_pdf(self, id: int) -> str:
         """請求書のPDFファイルをダウンロードする
 
