@@ -25,7 +25,7 @@ def check_access_token(func):
     return wrapper
 
 
-class MisocaApiHandler:
+class MisocaApi:
     def __init__(self) -> None:
         self.__client_id = os.environ["MISOCA_CLIENT_ID"]
         self.__client_secret = os.environ["MISOCA_CLIENT_SECRET"]
