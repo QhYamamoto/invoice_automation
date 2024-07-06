@@ -5,7 +5,7 @@ import traceback
 import sys
 import shortuuid
 from datetime import datetime
-from logging import getLogger, Formatter, INFO
+from logging import getLogger, Formatter
 from pytz import timezone
 
 
@@ -28,16 +28,19 @@ class Logger():
         logger.propagate = False
         logger.setLevel(logging.INFO)
 
-        dt_now = datetime.now()
-        log_dir = "/app/storage/logs"
-        log_file = dt_now.strftime("%Y.log")
+        if os.environ["APP_ENV"] == "debug":
+            handler = logging.StreamHandler()
+        else:
+            dt_now = datetime.now()
+            log_dir = "/app/storage/logs"
+            log_file = dt_now.strftime("%Y-%m.log")
 
-        # ディレクトリが存在しない場合は作成
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+            # ディレクトリが存在しない場合は作成
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+            handler = logging.FileHandler(os.path.join(log_dir, log_file))
 
-        file_handler = logging.FileHandler(os.path.join(log_dir, log_file))
-        file_handler.setLevel(logging.INFO)
+        handler.setLevel(logging.INFO)
 
         log_format = "%(asctime)s { loglevel: %(levelname)s, " \
             "file: %(file_name)s, " \
@@ -49,8 +52,8 @@ class Logger():
         formatter.converter = lambda *args: datetime.now(
             timezone("Asia/Tokyo")
         ).timetuple()
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
         trace = (
             traceback.format_exc().strip().split("\n")
