@@ -3,6 +3,7 @@ import json
 import base64
 from email.message import EmailMessage
 from os.path import basename
+import time
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
@@ -23,20 +24,51 @@ class GmailApi:
 
     def authenticate(self):
         """oAuth2で経由で認証する"""
+        redirect_uri = os.environ["GCP_REDIRECT_URI"]
         flow = InstalledAppFlow.from_client_secrets_file(
             self.__secrets_path,
             scopes=self.__scopes,
+            redirect_uri=redirect_uri,
         )
 
-        port = int(os.environ["GCP_REDIRECT_URI_PORT"])
-        credentials = flow.run_local_server(
-            redirect_uri_trailing_slash=False,
-            port=port
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        print(
+            f"Please go to this URL and authorize the application: {auth_url}"
         )
+
+        # ファイルに保存するよう指示
+        auth_code_file_path = os.environ["GCP_AUTH_CODE_FILE_PATH"]
+        with open(auth_code_file_path, "w"):
+            pass
+        os.chmod(auth_code_file_path, 0o777)
+
+        print(
+            f"Please save the authorization code in {auth_code_file_path} file"
+        )
+        print(
+            f"Waiting for the authorization code to be saved in {auth_code_file_path}..."
+        )
+
+        # 認証コードがファイルに保存されるまで待機
+        is_code_set = False
+        while not is_code_set:
+            with open(auth_code_file_path, 'r') as file:
+                if code := file.read().strip():
+                    is_code_set = True
+            time.sleep(1)
+
+        # ファイルを削除する
+        os.remove(auth_code_file_path)
+
+        # 認証コードを使ってトークンを取得
+        flow.fetch_token(code=code)
+        print("Access token fetched successfully.")
+
+        credentials = flow.credentials
 
         # 認証情報をJSONファイルに保存
-        with open(self.__credentials_path, "w") as credentials_file:
-            credentials_file.write(credentials.to_json())
+        with open(self.__credentials_path, 'w') as token_file:
+            token_file.write(credentials.to_json())
 
     def __get_credentials(self):
         """JSONファイルから認証情報を読み込んでCredentialsインスタンスを取得する
