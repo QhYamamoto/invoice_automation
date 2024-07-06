@@ -9,6 +9,15 @@ class Handler:
 
     def default(self):
         """デフォルト処理(請求書発行 → 請求書PDFダウンロード → メール作成)"""
+        path_to_invoice_pdf = self.publish_invoice()
+        self.__gmail_api.create_invoice_mail_draft(path_to_invoice_pdf)
+
+    def publish_invoice(self) -> str:
+        """請求書を発行してダウンロードする
+
+        Returns:
+            str: 発行、ダウンロードした請求書のファイルパス
+        """
         self.__misoca_api.set_access_token()
 
         self.__misoca_api.publish_invoice()
@@ -16,11 +25,9 @@ class Handler:
         invoices = self.__misoca_api.get_all_invoices()
         latest_invoice = invoices[0]
 
-        path_to_invoice_pdf = self.__misoca_api.download_invoice_pdf(
+        return self.__misoca_api.download_invoice_pdf(
             latest_invoice["id"]
         )
-
-        self.__gmail_api.create_invoice_mail_draft(path_to_invoice_pdf)
 
     def authenticate_gmail(self):
         """ブラウザを使用してGmailの認証処理を手動で行う"""
