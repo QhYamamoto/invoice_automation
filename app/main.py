@@ -1,22 +1,25 @@
+import sys
 from dotenv import load_dotenv
-from libs.api.Gmail import GmailApi
-from libs.api.Misoca import MisocaApi
+from Handelr import Handler
 from libs.Logger import Logger
 
-load_dotenv()
+try:
+    load_dotenv()
 
-logger = Logger()
-logger.info("Process started.")
+    command = sys.argv[1] if len(sys.argv) > 1 else "default"
 
-misoca_api = MisocaApi()
-misoca_api.publish_invoice()
+    logger = Logger()
+    handler = Handler()
+    logger.info("Process started.")
 
-invoices = misoca_api.get_all_invoices()
-latest_invoice = invoices[0]
+    try:
+        getattr(handler, command)()
+    except AttributeError as e:
+        logger.error(f"Failed to execute Handler method: {str(e)}")
+        exit()
 
-path_to_invoice_pdf = misoca_api.download_invoice_pdf(latest_invoice["id"])
-
-gmail_api = GmailApi()
-gmail_api.create_invoice_mail_draft(path_to_invoice_pdf)
+except Exception as e:
+    logger.error(f"Unexpected error occurred: {str(e)}")
+    exit()
 
 logger.info("Process completed successfully.")

@@ -20,7 +20,7 @@ class MisocaApi:
         self.__base_url = os.environ["MISOCA_BASE_URL"]
         self.__email = os.environ["MISOCA_EMAIL"]
         self.__password = os.environ["MISOCA_PASSWORD"]
-        self.__access_token = self.__get_access_token()
+        self.__access_token: str | None = None
 
     def __generate_url(self, path: str, query_params: dict[str, str] | None = None):
         """ApiのURLを生成する
@@ -40,12 +40,8 @@ class MisocaApi:
             else f"{url}?{urllib.parse.urlencode(query_params)}"
         )
 
-    def __get_access_token(self):
-        """oAuth2でMisocaにログインしてアクセストークンを取得する
-
-        Returns:
-            str: アクセストークン
-        """
+    def set_access_token(self):
+        """oAuth2でMisocaにログインしてアクセストークンをクラス変数にセットする"""
 
         virtual_browser = VirtualBrowser()
         driver = virtual_browser.get_driver()
@@ -115,7 +111,7 @@ class MisocaApi:
         logger.info("Succeeded to get Access token.")
 
         parsed_response = token_response.json()
-        return parsed_response["access_token"]
+        self.__access_token = parsed_response["access_token"]
 
     def __get_authorization_header(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.__access_token}"}

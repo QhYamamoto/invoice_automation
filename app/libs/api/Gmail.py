@@ -28,7 +28,7 @@ class GmailApi:
             scopes=self.__scopes,
         )
 
-        port = os.environ["GCP_REDIRECT_URI_PORT"]
+        port = int(os.environ["GCP_REDIRECT_URI_PORT"])
         credentials = flow.run_local_server(
             redirect_uri_trailing_slash=False,
             port=port
@@ -38,12 +38,31 @@ class GmailApi:
         with open(self.__credentials_path, "w") as credentials_file:
             credentials_file.write(credentials.to_json())
 
-    def __refresh_access_token(self, credentials):
+    def __get_credentials(self):
+        """JSONファイルから認証情報を読み込んでCredentialsインスタンスを取得する
+        Returns:
+            Credentials: 認証情報
+        """
+        try:
+            with open(self.__credentials_path, "r") as token_file:
+                token_info = json.load(token_file)
+                return Credentials.from_authorized_user_info(
+                    token_info,
+                    scopes=self.__scopes
+                )
+        except Exception as e:
+            logger.error(f"Failed to load credentials.json: {str(e)}")
+            exit()
+
+    def refresh_access_token(self, credentials=None):
         """アクセストークンをリフレッシュする
 
         Args:
             credentials (Credentials): 認証情報
         """
+        if credentials is None:
+            credentials = self.__get_credentials()
+
         try:
             credentials.refresh(Request())
             with open(self.__credentials_path, "w") as token_file:
@@ -55,23 +74,11 @@ class GmailApi:
     def __set_client_service(self):
         """Gmail API用のサービスインスタンスをセットする"""
         # NOTE: 利用する機能を追加する場合は引数でscopesを指定できるようにする
-        credentials = None
-
-        # JSONファイルから認証情報を読み込む
-        try:
-            with open(self.__credentials_path, "r") as token_file:
-                token_info = json.load(token_file)
-                credentials = Credentials.from_authorized_user_info(
-                    token_info,
-                    scopes=self.__scopes
-                )
-        except Exception as e:
-            logger.error(f"Failed to load credentials.json: {str(e)}")
-            exit()
+        credentials = self.__get_credentials()
 
         # トークンが無効な場合はリフレッシュする
         if credentials and credentials.expired and credentials.refresh_token:
-            self.__refresh_access_token(credentials)
+            self.refresh_access_token(credentials)
 
         self.__client_service = build("gmail", "v1", credentials=credentials)
 
