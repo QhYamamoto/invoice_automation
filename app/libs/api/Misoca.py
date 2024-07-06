@@ -160,7 +160,7 @@ class MisocaApi:
         total_working_hours = os.environ["INVOICE_TOTAL_WORKING_HOURS"]
 
         data = {
-            "invoice_number": dt_last_month.strftime(f"%Y%m%d-001"),
+            "invoice_number": dt_now.strftime(f"%Y%m%d-001"),
             "issue_date": dt_last_date_of_current_month.strftime("%Y-%m-%d"),
             "subject": dt_last_month.strftime(subject),
             "recipient_name": recipient_name,
