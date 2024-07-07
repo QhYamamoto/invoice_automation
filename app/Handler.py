@@ -29,6 +29,16 @@ class Handler:
             latest_invoice["id"]
         )
 
+    def confirm_contact_id(self):
+        """直近の請求書のcontact_idを確認する"""
+        self.__misoca_api.set_access_token()
+
+        self.__misoca_api.publish_invoice()
+
+        invoices = self.__misoca_api.get_all_invoices()
+        latest_invoice = invoices[0]
+        print(f"contact_id: {latest_invoice['contact_id']}")
+
     def authenticate_gmail(self):
         """ブラウザを使用してGmailの認証処理を手動で行う"""
         self.__gmail_api.authenticate()
