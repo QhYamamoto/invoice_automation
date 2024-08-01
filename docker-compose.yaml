@@ -6,4 +6,4 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./app/storage:/app/storage
-    command: ["python3", "/app/main.py"]
+    command: ["default"]

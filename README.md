@@ -41,7 +41,7 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
    2. 直近の請求書が自動発行したい請求書の取引先に対する請求書でない場合
 4. 下記のコマンドを実行する
    ```sh
-   docker-compose run app python3 /app/main.py confirm_contact_id
+   docker-compose run app confirm_contact_id
    ```
 5. 直近の請求書の取引先 ID が表示されるので、.env の`INVOICE_CONTACT_ID`に設定する
 
@@ -59,7 +59,7 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
 8. 以下のコマンドを順に実行し、CLI に表示されるメッセージに従って認証フローを実行する。
    ```sh
    docker-compose build
-   docker-compose run app python3 /app/main.py authenticate_gmail
+   docker-compose run app authenticate_gmail
    ```
    - CLI に表示される認証用 URL に任意のブラウザでアクセスし、Gmail アカウントでログインしてください。
    - ログイン後、`承認済みのリダイレクトURI`にリダイレクトします。クエリパラメータの`code`を`auth_code.txt`にコピペして保存してください。
@@ -81,24 +81,24 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
 3. 請求書発行のみを行う。
 
    ```sh
-   docker-compose run app python3 /app/main.py publish_invoice
+   docker-compose run app publish_invoice
    ```
 
 4. 取引先 ID を確認する
 
    ```sh
-   docker-compose run app python3 /app/main.py confirm_contact_id
+   docker-compose run app confirm_contact_id
    ```
 
 5. Gmail API の認証を行う。
 
    ```sh
-   docker-compose run app python3 /app/main.py authenticate_gmail
+   docker-compose run app authenticate_gmail
    ```
 
 6. Gmail API のアクセストークンをリフレッシュする。
    ```sh
-   docker-compose run app python3 /app/main.py refresh_gmail_access_token
+   docker-compose run app refresh_gmail_access_token
    ```
 
 ### 備考
@@ -114,7 +114,7 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
 - Gmail API 用のアクセストークンは、リフレッシュトークンが有効である場合のみ自動的にリフレッシュされます。
   - 手動でアクセストークンをリフレッシュする場合は以下のコマンドを実行してください。
     ```sh
-    docker-compose run app python3 /app/main.py refresh_gmail_access_token
+    docker-compose run app refresh_gmail_access_token
     ```
 - [OAuth 同意画面](https://console.cloud.google.com/apis/credentials/consent)のステータスが Testing 状態である場合、リフレッシュトークンは 7 日で無効化されます。
   - とりあえず Production モードにしておいて認証を実行すれば有効期限なしのリフレッシュトークンを取得できる(かも? 今後要確認。)
