@@ -71,8 +71,8 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
    ```sh
    docker-compose run app authenticate_gmail
    ```
-   - CLI に表示される認証用 URL に任意のブラウザでアクセスし、Gmail アカウントでログインしてください。
-   - ログイン後、`承認済みのリダイレクトURI`にリダイレクトします。クエリパラメータの`code`を`auth_code.txt`にコピペして保存してください。
+   - CLI に表示される認証用 URL に任意のブラウザでアクセスし、Gmail アカウントでログインする。
+   - ログイン後、`承認済みのリダイレクトURI`にリダイレクトします。クエリパラメータの`code`を`auth_code.txt`にコピペして保存する。
 
 ### コマンド一覧
 
@@ -94,13 +94,13 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
    docker-compose run app publish_invoice
    ```
 
-4. 取引先 ID を確認する
+4. 取引先 ID を確認する。
 
    ```sh
    docker-compose run app confirm_contact_id
    ```
 
-5. MISOCA API の認証を行う。
+5. Misoca API の認証を行う。
 
    ```sh
    docker-compose run app authenticate_misoca
@@ -112,7 +112,7 @@ Misoca API と Gmail API を使用して、以下の作業を自動化します�
    docker-compose run app authenticate_gmail
    ```
 
-7. Gmail API のアクセストークンをリフレッシュする。
+7. Misoca API のアクセストークンをリフレッシュする。
 
    ```sh
    docker-compose run app refresh_misoca_access_token
