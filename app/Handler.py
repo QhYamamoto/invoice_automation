@@ -18,8 +18,6 @@ class Handler:
         Returns:
             str: 発行、ダウンロードした請求書のファイルパス
         """
-        self.__misoca_api.set_access_token()
-
         self.__misoca_api.publish_invoice()
 
         invoices = self.__misoca_api.get_all_invoices()
@@ -31,18 +29,24 @@ class Handler:
 
     def confirm_contact_id(self):
         """直近の請求書のcontact_idを確認する"""
-        self.__misoca_api.set_access_token()
-
         self.__misoca_api.publish_invoice()
 
         invoices = self.__misoca_api.get_all_invoices()
         latest_invoice = invoices[0]
         print(f"contact_id: {latest_invoice['contact_id']}")
 
+    def authenticate_misoca(self):
+        """ブラウザを使用してMisocaの認証処理を手動で行う"""
+        self.__misoca_api._authenticate()
+
     def authenticate_gmail(self):
         """ブラウザを使用してGmailの認証処理を手動で行う"""
-        self.__gmail_api.authenticate()
+        self.__gmail_api._authenticate()
+
+    def refresh_misoca_access_token(self):
+        """GmailAPI用のアクセストークンをリフレッシュする"""
+        self.__misoca_api._refresh_access_token()
 
     def refresh_gmail_access_token(self):
-        """GmailAPI用のアクセストークンを初期化する"""
-        self.__gmail_api.refresh_access_token()
+        """GmailAPI用のアクセストークンをリフレッシュする"""
+        self.__gmail_api._refresh_access_token()

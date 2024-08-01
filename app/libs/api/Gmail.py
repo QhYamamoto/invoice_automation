@@ -3,114 +3,88 @@ import json
 import base64
 from email.message import EmailMessage
 from os.path import basename
-import time
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from libs.Logger import Logger
+from libs.api.ApiBase import ApiBase
 
 logger = Logger()
 
 
-class GmailApi:
+class GmailApi(ApiBase):
     CREDENTIALS_PATH = "/app/storage/credentials"
 
     def __init__(self) -> None:
+        super().__init__()
+
         self.__scopes = os.environ["GMAIL_API_SCOPES"].split(",")
-        self.__credentials_path = f"{self.CREDENTIALS_PATH}/credentials.json"
-        self.__secrets_path = f"{self.CREDENTIALS_PATH}/client_secrets.json"
         self.__client_service = None
+        self._secrets_path = f"{self.CREDENTIALS_PATH}/client_secrets.gmail.json"
 
-    def authenticate(self):
-        """oAuth2で経由で認証する"""
-        redirect_uri = os.environ["GCP_REDIRECT_URI"]
-        flow = InstalledAppFlow.from_client_secrets_file(
-            self.__secrets_path,
-            scopes=self.__scopes,
-            redirect_uri=redirect_uri,
-        )
-
-        auth_url, _ = flow.authorization_url(prompt='consent')
-        print(
-            f"Please go to this URL and authorize the application: {auth_url}"
-        )
-
-        # ファイルに保存するよう指示
-        auth_code_file_path = os.environ["GCP_AUTH_CODE_FILE_PATH"]
-        with open(auth_code_file_path, "w"):
-            pass
-        os.chmod(auth_code_file_path, 0o777)
-
-        print(
-            f"Please save the authorization code in {auth_code_file_path} file"
-        )
-        print(
-            f"Waiting for the authorization code to be saved in {auth_code_file_path}..."
-        )
-
-        # 認証コードがファイルに保存されるまで待機
-        is_code_set = False
-        while not is_code_set:
-            with open(auth_code_file_path, 'r') as file:
-                if code := file.read().strip():
-                    is_code_set = True
-            time.sleep(1)
-
-        # ファイルを削除する
-        os.remove(auth_code_file_path)
-
-        # 認証コードを使ってトークンを取得
-        flow.fetch_token(code=code)
-        print("Access token fetched successfully.")
-
-        credentials = flow.credentials
-
-        # 認証情報をJSONファイルに保存
-        with open(self.__credentials_path, 'w') as token_file:
-            token_file.write(credentials.to_json())
-
-    def __get_credentials(self):
-        """JSONファイルから認証情報を読み込んでCredentialsインスタンスを取得する
-        Returns:
-            Credentials: 認証情報
-        """
         try:
-            with open(self.__credentials_path, "r") as token_file:
-                token_info = json.load(token_file)
-                return Credentials.from_authorized_user_info(
-                    token_info,
-                    scopes=self.__scopes
-                )
+            self.__app_flow = InstalledAppFlow.from_client_secrets_file(
+                self._secrets_path,
+                scopes=self.__scopes,
+                redirect_uri=os.environ["GCP_REDIRECT_URI"],
+            )
         except Exception as e:
-            logger.error(f"Failed to load credentials.json: {str(e)}")
+            logger.error(f"Failed to load client_secrets.gmail.json: {str(e)}")
             exit()
 
-    def refresh_access_token(self, credentials=None):
+        auth_url, _ = self.__app_flow.authorization_url(prompt='consent')
+        self._auth_url = auth_url
+
+    ################ 各クラスで実装する処理 ################
+
+    def _refresh_access_token(self):
         """アクセストークンをリフレッシュする
 
         Args:
             credentials (Credentials): 認証情報
         """
-        if credentials is None:
-            credentials = self.__get_credentials()
+        credentials = self.__get_credentials_instance()
 
         try:
             credentials.refresh(Request())
-            with open(self.__credentials_path, "w") as token_file:
-                token_file.write(credentials.to_json())
+            with open(self._credentials_path, "w") as credentials_file:
+                credentials_file.write(credentials.to_json())
         except Exception as e:
             logger.error(f"Failed to refresh token: {e}")
+            exit()
+
+    def _get_credentials_json(self):
+        auth_code = self._indicate_to_set_auth_code()
+        self.__app_flow.fetch_token(code=auth_code)
+        print("Credentials fetched successfully.")
+
+        return self.__app_flow.credentials.to_json()
+
+    ################ 固有の処理 ################
+    def __get_credentials_instance(self):
+        """JSONファイルから認証情報を読み込んでCredentialsインスタンスを取得する
+        Returns:
+            Credentials: 認証情報
+        """
+        try:
+            credentials_dict = self._get_credentials_dict()
+            return Credentials.from_authorized_user_info(
+                credentials_dict,
+                scopes=self.__scopes
+            )
+        except Exception as e:
+            logger.error(f"Failed to load credentials.json: {str(e)}")
             exit()
 
     def __set_client_service(self):
         """Gmail API用のサービスインスタンスをセットする"""
         # NOTE: 利用する機能を追加する場合は引数でscopesを指定できるようにする
-        credentials = self.__get_credentials()
+        credentials = self.__get_credentials_instance()
 
         # トークンが無効な場合はリフレッシュする
         if credentials and credentials.expired and credentials.refresh_token:
-            self.refresh_access_token(credentials)
+            self._refresh_access_token()
 
         self.__client_service = build("gmail", "v1", credentials=credentials)
 

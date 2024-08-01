@@ -1,100 +1,37 @@
 import calendar
+import json
 import requests
 import os
 import urllib.parse
-from urllib.parse import urlparse, parse_qs
 from urllib3.connection import datetime
 from libs.Logger import Logger
-from libs.VirtualBrowser import VirtualBrowser
-from selenium.webdriver.support import expected_conditions as EC
 from typing import Any
+from libs.api.ApiBase import ApiBase
 
 logger = Logger()
 
 
-class MisocaApi:
+class MisocaApi(ApiBase):
     def __init__(self) -> None:
-        self.__client_id = os.environ["MISOCA_CLIENT_ID"]
-        self.__client_secret = os.environ["MISOCA_CLIENT_SECRET"]
-        self.__redirect_uri = os.environ["MISOCA_REDIRECT_URI"]
-        self.__base_url = os.environ["MISOCA_BASE_URL"]
-        self.__email = os.environ["MISOCA_EMAIL"]
-        self.__password = os.environ["MISOCA_PASSWORD"]
-        self.__access_token: str | None = None
+        super().__init__()
 
-    def __generate_url(self, path: str, query_params: dict[str, str] | None = None):
-        """ApiのURLを生成する
+        self._auth_url = self.__generate_url("/oauth2/authorize", {
+            "response_type": "code",
+            "client_id": os.environ["MISOCA_CLIENT_ID"],
+            "redirect_uri": os.environ["MISOCA_REDIRECT_URI"],
+            "scope": "write",
+        })
 
-        Args:
-            path (str): APIのパス
-            query_params (dict | None): クエリパラメータ
+    ################ 各クラスで実装する処理 ################
+    def _get_credentials_json(self):
+        auth_code = self._indicate_to_set_auth_code()
 
-        Returns:
-            str: 生成されたURL
-        """
-        path = path.strip("/")
-        url = f"{self.__base_url}/{path}"
-
-        return (
-            url if query_params is None
-            else f"{url}?{urllib.parse.urlencode(query_params)}"
-        )
-
-    def set_access_token(self):
-        """oAuth2でMisocaにログインしてアクセストークンをクラス変数にセットする"""
-
-        virtual_browser = VirtualBrowser()
-        driver = virtual_browser.get_driver()
-
-        logger.info("Trying to loggin to Misoca...")
-
-        # 仮想ブラウザで認証画面を開く
-        try:
-            auth_request_url = self.__generate_url("/oauth2/authorize", {
-                "response_type": "code",
-                "client_id": self.__client_id,
-                "redirect_uri": self.__redirect_uri,
-                "scope": "write"
-            })
-            driver.get(auth_request_url)
-
-            # 次の画面へのaタグを取得
-            a_tag = virtual_browser.get_element(
-                ".c-btn--l.c-btn--yayoi.c-btn--block.u-margin-bottom--small"
-            )
-            a_tag.click()
-
-            # ID(メールアドレス)入力画面
-            yayoi_id_field = virtual_browser.get_element("#yayoi_id_input")
-            yayoi_id_field.send_keys(self.__email)
-            next_button = virtual_browser.get_element("#next_btn")
-            next_button.click()
-
-            # パスワード入力画面
-            password_field = virtual_browser.get_element("#password_input")
-            password_field.send_keys(self.__password)
-            login_button = virtual_browser.get_element("#login_btn")
-            login_button.click()
-
-            # リダイレクトされたURLから認証コードを抽出
-            virtual_browser.wait_until(EC.url_contains("code="))
-            current_url = driver.current_url
-            driver.quit()
-        except Exception as e:
-            logger.error(f"Failed to loggin: {str(e)}")
-            exit()
-
-        logger.info("Succeeded to loggin.")
-
-        logger.info("Trying to get Access token for Misoca...")
-        # 認証コードを用いてトークンを取得する
-        auth_code = parse_qs(urlparse(current_url).query)["code"][0]
         token_data = {
             "grant_type": "authorization_code",
             "code": auth_code,
-            "redirect_uri": self.__redirect_uri,
-            "client_id": self.__client_id,
-            "client_secret": self.__client_secret
+            "redirect_uri": os.environ["MISOCA_REDIRECT_URI"],
+            "client_id": os.environ["MISOCA_CLIENT_ID"],
+            "client_secret": os.environ["MISOCA_CLIENT_SECRET"],
         }
 
         try:
@@ -108,13 +45,67 @@ class MisocaApi:
             logger.error(f"Failed to get Access token: {str(e)}")
             exit()
 
-        logger.info("Succeeded to get Access token.")
+        print("Credentials fetched successfully.")
 
-        parsed_response = token_response.json()
-        self.__access_token = parsed_response["access_token"]
+        return json.dumps(token_response.json())
+
+    def _refresh_access_token(self):
+        """アクセストークンをリフレッシュする
+
+        Args:
+            credentials (Credentials): 認証情報
+        """
+        credentials_dict = self._get_credentials_dict()
+        token_data = {
+            "grant_type": "refresh_token",
+            "refresh_token": credentials_dict["refresh_token"],
+            "redirect_uri": os.environ["MISOCA_REDIRECT_URI"],
+            "client_id": os.environ["MISOCA_CLIENT_ID"],
+            "client_secret": os.environ["MISOCA_CLIENT_SECRET"],
+        }
+
+        try:
+            token_response = requests.post(
+                self.__generate_url("/oauth2/token"),
+                data=token_data,
+            )
+
+            token_response.raise_for_status()
+
+            with open(self._credentials_path, "w") as credentials_file:
+                credentials_file.write(json.dumps(token_response.json()))
+        except Exception as e:
+            logger.error(f"Failed to refresh token: {e}")
+            exit()
+
+    ################ 固有の処理 ################
+    def __generate_url(self, path: str, query_params: dict[str, str] | None = None):
+        """ApiのURLを生成する
+
+        Args:
+            path (str): APIのパス
+            query_params (dict | None): クエリパラメータ
+
+        Returns:
+            str: 生成されたURL
+        """
+        base_url = os.environ['MISOCA_BASE_URL']
+        path = path.strip("/")
+        url = f"{base_url}/{path}"
+
+        return (
+            url if query_params is None
+            else f"{url}?{urllib.parse.urlencode(query_params)}"
+        )
 
     def __get_authorization_header(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self.__access_token}"}
+        credentials_dict = self._get_credentials_dict()
+
+        if self._is_token_expired():
+            self._refresh_access_token()
+            credentials_dict = self._get_credentials_dict()
+
+        return {"Authorization": f"Bearer {credentials_dict["access_token"]}"}
 
     def get_all_invoices(self) -> list[dict[str, Any]]:
         """請求書を全件取得する
